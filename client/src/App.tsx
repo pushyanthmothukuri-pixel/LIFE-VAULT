@@ -25,7 +25,11 @@ import {
   UploadCloud
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getBaseUrl = () => {
+  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  return url.endsWith('/api') ? url.slice(0, -4) : url;
+};
+const API_BASE = getBaseUrl();
 
 export const App: React.FC = () => {
   const { 

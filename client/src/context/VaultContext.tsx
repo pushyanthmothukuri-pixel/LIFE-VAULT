@@ -105,9 +105,11 @@ interface VaultContextType {
 
 const VaultContext = createContext<VaultContextType | undefined>(undefined);
 
-const API_BASE = import.meta.env.VITE_API_URL 
-  ? `${import.meta.env.VITE_API_URL}/api` 
-  : 'http://localhost:5000/api';
+const getApiBase = () => {
+  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  return url.endsWith('/api') ? url : `${url}/api`;
+};
+const API_BASE = getApiBase();
 
 const initialVaultData: VaultData = {
   passwords: [],

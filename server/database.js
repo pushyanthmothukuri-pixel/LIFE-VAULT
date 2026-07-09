@@ -1,100 +1,85 @@
-const fs = require('fs');
-const path = require('path');
-
-const DB_PATH = path.join(__dirname, 'db.json');
-
-// Initialize database file if it doesn't exist
-if (!fs.existsSync(DB_PATH)) {
-  fs.writeFileSync(DB_PATH, JSON.stringify({ users: {} }, null, 2), 'utf8');
-}
-
-function readDB() {
-  try {
-    const data = fs.readFileSync(DB_PATH, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    console.error('Error reading database file, resetting database:', err);
-    return { users: {} };
-  }
-}
-
-function writeDB(data) {
-  const tempPath = DB_PATH + '.tmp';
-  try {
-    fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf8');
-    fs.renameSync(tempPath, DB_PATH);
-  } catch (err) {
-    console.error('Error writing to database:', err);
-    if (fs.existsSync(tempPath)) {
-      try { fs.unlinkSync(tempPath); } catch (_) {}
-    }
-    throw err;
-  }
-}
+const mongoose = require('mongoose');
+const User = require('./user');
 
 const Database = {
-  getUser(username) {
-    const db = readDB();
-    const cleanUsername = username.toLowerCase().trim();
-    return db.users[cleanUsername] || null;
+  async connect() {
+    const mongoUri = process.env.MONGODB_URI;
+    if (!mongoUri) {
+      console.error('Error: MONGODB_URI environment variable is not defined.');
+      process.exit(1);
+    }
+    try {
+      await mongoose.connect(mongoUri);
+      console.log('[Database] Connected successfully to MongoDB');
+    } catch (err) {
+      console.error('[Database] Connection error:', err);
+      throw err;
+    }
   },
 
-  createUser(username, passwordHash, salt, recoveryPayload = null, recoveryKeyHash = null) {
-    const db = readDB();
+  async getUser(username) {
     const cleanUsername = username.toLowerCase().trim();
-    if (db.users[cleanUsername]) {
+    return await User.findOne({ username: cleanUsername });
+  },
+
+  async createUser(username, passwordHash, salt, recoveryPayload = null, recoveryKeyHash = null) {
+    const cleanUsername = username.toLowerCase().trim();
+    const existingUser = await User.findOne({ username: cleanUsername });
+    if (existingUser) {
       throw new Error('User already exists');
     }
-    db.users[cleanUsername] = {
+    const user = new User({
       username: cleanUsername,
       passwordHash,
       salt,
-      vaultData: null,
       recoveryPayload,
-      recoveryKeyHash,
-      createdAt: new Date().toISOString()
-    };
-    writeDB(db);
-    return db.users[cleanUsername];
+      recoveryKeyHash
+    });
+    await user.save();
+    return user;
   },
 
-  updateVault(username, vaultData) {
-    const db = readDB();
+  async updateVault(username, vaultData) {
     const cleanUsername = username.toLowerCase().trim();
-    if (!db.users[cleanUsername]) {
+    const result = await User.updateOne(
+      { username: cleanUsername },
+      { $set: { vaultData } }
+    );
+    if (result.matchedCount === 0) {
       throw new Error('User not found');
     }
-    db.users[cleanUsername].vaultData = vaultData;
-    db.users[cleanUsername].updatedAt = new Date().toISOString();
-    writeDB(db);
     return true;
   },
 
-  updateRecoveryPayload(username, recoveryPayload) {
-    const db = readDB();
+  async updateRecoveryPayload(username, recoveryPayload) {
     const cleanUsername = username.toLowerCase().trim();
-    if (!db.users[cleanUsername]) {
+    const result = await User.updateOne(
+      { username: cleanUsername },
+      { $set: { recoveryPayload } }
+    );
+    if (result.matchedCount === 0) {
       throw new Error('User not found');
     }
-    db.users[cleanUsername].recoveryPayload = recoveryPayload;
-    db.users[cleanUsername].updatedAt = new Date().toISOString();
-    writeDB(db);
     return true;
   },
 
-  resetPassword(username, newPasswordHash, newSalt, newRecoveryPayload, newRecoveryKeyHash, newVaultData) {
-    const db = readDB();
+  async resetPassword(username, newPasswordHash, newSalt, newRecoveryPayload, newRecoveryKeyHash, newVaultData) {
     const cleanUsername = username.toLowerCase().trim();
-    if (!db.users[cleanUsername]) {
+    const result = await User.updateOne(
+      { username: cleanUsername },
+      {
+        $set: {
+          passwordHash: newPasswordHash,
+          salt: newSalt,
+          recoveryPayload: newRecoveryPayload,
+          recoveryKeyHash: newRecoveryKeyHash,
+          vaultData: newVaultData
+        }
+      }
+    );
+    if (result.matchedCount === 0) {
       throw new Error('User not found');
     }
-    db.users[cleanUsername].passwordHash = newPasswordHash;
-    db.users[cleanUsername].salt = newSalt;
-    db.users[cleanUsername].recoveryPayload = newRecoveryPayload;
-    db.users[cleanUsername].recoveryKeyHash = newRecoveryKeyHash;
-    db.users[cleanUsername].vaultData = newVaultData;
-    db.users[cleanUsername].updatedAt = new Date().toISOString();
-    writeDB(db);
     return true;
   }
 };
