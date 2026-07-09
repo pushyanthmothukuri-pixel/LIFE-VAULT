@@ -25,6 +25,8 @@ import {
   UploadCloud
 } from 'lucide-react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 export const App: React.FC = () => {
   const { 
     isAuthenticated, 
@@ -46,7 +48,7 @@ export const App: React.FC = () => {
   const handleExportBackup = async () => {
     try {
       setSyncStatus('syncing');
-      const res = await fetch('http://localhost:5000/api/vault', {
+      const res = await fetch(`${API_BASE}/api/vault`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) throw new Error();
@@ -108,7 +110,7 @@ export const App: React.FC = () => {
       }
 
       // Try uploading the encrypted payload directly to the server
-      const syncRes = await fetch('http://localhost:5000/api/vault', {
+      const syncRes = await fetch(`${API_BASE}/api/vault`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
