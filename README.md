@@ -100,6 +100,6 @@ LifeVault is deployed as a separate architecture using the following platform se
 * **Root Directory:** `client`
 * **Build Command:** `npm run build`
 * **Publish Directory:** `dist`
-* **Deployment URL:** `https://lifevault-frontend.onrender.com` (Example)
+* **Deployment URL:** `https://lifevault-frontend-xov5.onrender.com` (Example)
 * **Key Configurations:**
   * `VITE_API_URL`: Pointed to the backend Web Service URL.
